@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+venv/
+.DS_Store
+listing_history.db
+photo_cache/
+email_preview.html
