@@ -16,7 +16,15 @@ TARGET_ZIP_CODES = {
     "63104": "Soulard / Benton Park, MO",
     "63110": "Tower Grove, MO",
     "63116": "Dutchtown / Gravois Park, MO",
-    "93117": "Goleta / Santa Barbara, CA",
+    "63117": "Richmond Heights, MO",
+    "63105": "Clayton, MO",
+    "63390": "Innsbrook, MO",
+}
+
+# ─── City Filters (restrict specific zips to certain cities) ────
+# If a zip is listed here, only listings in the specified cities are included.
+ZIP_CITY_FILTER = {
+    "63390": ["Innsbrook"],
 }
 
 # ─── BRRRR Criteria ──────────────────────────────────────────────
@@ -36,14 +44,14 @@ MONTHLY_MAINTENANCE_RATE = 0.01
 RENT_MULTIPLIERS = {
     "63130": 0.0075, "63143": 0.0080, "63139": 0.0085,
     "63104": 0.0090, "63110": 0.0085, "63116": 0.0090,
-    "93117": 0.0050,
+    "63117": 0.0075, "63105": 0.0065, "63390": 0.0090,
 }
 DEFAULT_RENT_MULTIPLIER = 0.0075
 
 ARV_PPSF = {
     "63130": 160, "63143": 170, "63139": 145,
     "63104": 175, "63110": 165, "63116": 130,
-    "93117": 650,
+    "63117": 175, "63105": 200, "63390": 120,
 }
 DEFAULT_ARV_PPSF = 160
 
