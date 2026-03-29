@@ -122,10 +122,16 @@ def fetch_listings() -> tuple:
         records = data.get("value", [])
 
         target_zips = set(TARGET_ZIP_CODES.keys())
+        from config import ZIP_CITY_FILTER
         for r in records:
             zip_code = (r.get("PostalCode") or "")[:5]
             price = r.get("ListPrice") or 0
             if zip_code in target_zips and 15000 < price <= MAX_PURCHASE_PRICE:
+                # Apply city filter if one exists for this zip
+                if zip_code in ZIP_CITY_FILTER:
+                    city = (r.get("City") or "").strip()
+                    if city not in ZIP_CITY_FILTER[zip_code]:
+                        continue
                 all_results.append(r)
 
         page += 1
