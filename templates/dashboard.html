@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRRRR Deal Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface2: #232733;
+            --border: #2e3345;
+            --text: #e4e7f0;
+            --text-dim: #8b90a0;
+            --accent: #6c5ce7;
+            --accent-light: #a29bfe;
+            --green: #00d68f;
+            --green-dim: #00d68f22;
+            --red: #ff6b6b;
+            --red-dim: #ff6b6b22;
+            --yellow: #ffd93d;
+            --yellow-dim: #ffd93d22;
+            --blue: #4ecdc4;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ─── Header ──────────────────────────── */
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .header h1 span { color: var(--accent-light); }
+        .header-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+        .refresh-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .refresh-btn:hover { background: var(--accent-light); }
+        .refresh-btn:disabled { opacity: 0.5; cursor: wait; }
+
+        /* ─── Stats Bar ───────────────────────── */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            padding: 20px 32px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+        }
+        .stat-card .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+        .stat-card .value {
+            font-size: 26px;
+            font-weight: 700;
+        }
+        .stat-card .value.green { color: var(--green); }
+        .stat-card .value.accent { color: var(--accent-light); }
+        .stat-card .value.yellow { color: var(--yellow); }
+
+        /* ─── Filters ─────────────────────────── */
+        .filters {
+            padding: 0 32px 16px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-chip {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .filter-chip:hover, .filter-chip.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        .sort-select {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 7px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-left: auto;
+        }
+
+        /* ─── Map ─────────────────────────────── */
+        .map-container {
+            margin: 0 32px 20px;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        #map {
+            height: 420px;
+            width: 100%;
+            background: var(--surface2);
+        }
+        .map-toggle {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .map-toggle:hover, .map-toggle.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        /* Dark map tiles */
+        .leaflet-tile-pane { filter: brightness(0.7) contrast(1.1) saturate(0.3) hue-rotate(180deg) invert(1); }
+        .leaflet-control-zoom a {
+            background: var(--surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border) !important;
+        }
+        .leaflet-popup-content-wrapper {
+            background: var(--surface) !important;
+            color: var(--text) !important;
+            border-radius: 10px !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+        }
+        .leaflet-popup-tip { background: var(--surface) !important; }
+        .leaflet-popup-content { font-family: 'Inter', sans-serif; font-size: 12px; margin: 12px 14px; }
+        .leaflet-popup-content .popup-price { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+        .leaflet-popup-content .popup-address { color: var(--text-dim); margin-bottom: 8px; }
+        .leaflet-popup-content .popup-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .leaflet-popup-content .popup-metric { background: var(--bg); padding: 6px 8px; border-radius: 6px; }
+        .leaflet-popup-content .popup-metric .pm-label { font-size: 9px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.5px; }
+        .leaflet-popup-content .popup-metric .pm-value { font-weight: 700; font-size: 13px; }
+        .leaflet-popup-content .popup-links { margin-top: 8px; display: flex; gap: 6px; }
+        .leaflet-popup-content .popup-links a {
+            flex: 1; text-align: center; padding: 6px; border-radius: 6px;
+            font-size: 11px; font-weight: 600; text-decoration: none;
+        }
+
+        /* ─── Property Grid ───────────────────── */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 16px;
+            padding: 0 32px 40px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            transition: all 0.25s;
+            cursor: default;
+        }
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(108, 92, 231, 0.12);
+        }
+
+        .card-photo {
+            height: 180px;
+            background: var(--surface2);
+            position: relative;
+            overflow: hidden;
+        }
+        .card-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .card-photo.no-photo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+        .card-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .badge-score {
+            background: var(--accent);
+            color: white;
+        }
+        .badge-hot {
+            background: var(--green);
+            color: #000;
+            top: 12px;
+            left: 12px;
+            right: auto;
+        }
+
+        .card-body { padding: 18px; }
+        .card-price {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+        .card-address {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+        }
+        .card-neighborhood {
+            font-size: 11px;
+            color: var(--accent-light);
+        }
+
+        .card-specs {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+        .card-specs span strong { color: var(--text); }
+
+        .card-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .metric {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        .metric .m-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-dim);
+        }
+        .metric .m-value {
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+        .metric .m-value.positive { color: var(--green); }
+        .metric .m-value.negative { color: var(--red); }
+        .metric .m-value.neutral { color: var(--yellow); }
+
+        .card-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .tag {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .tag-pass { background: var(--green-dim); color: var(--green); }
+        .tag-fail { background: var(--red-dim); color: var(--red); }
+        .tag-warn { background: var(--yellow-dim); color: var(--yellow); }
+
+        .card-links {
+            display: flex;
+            gap: 8px;
+        }
+        .card-links a {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .link-zillow {
+            background: #006aff15;
+            color: #4d9fff;
+            border: 1px solid #006aff30;
+        }
+        .link-zillow:hover { background: #006aff30; }
+        .link-details {
+            background: var(--surface2);
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+        }
+        .link-details:hover { color: var(--text); background: var(--border); }
+
+        /* ─── Photo Gallery ───────────────────── */
+        .gallery {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 16px;
+            background: var(--bg);
+        }
+        .gallery-main {
+            width: 100%;
+            height: 320px;
+            object-fit: cover;
+            display: block;
+            cursor: pointer;
+        }
+        .gallery-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            z-index: 5;
+        }
+        .gallery-nav:hover { background: rgba(108, 92, 231, 0.8); }
+        .gallery-prev { left: 10px; }
+        .gallery-next { right: 10px; }
+        .gallery-counter {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .gallery-thumbs {
+            display: flex;
+            gap: 4px;
+            padding: 8px 0 0;
+            overflow-x: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        .gallery-thumb {
+            width: 64px;
+            height: 48px;
+            border-radius: 6px;
+            object-fit: cover;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+            flex-shrink: 0;
+            border: 2px solid transparent;
+        }
+        .gallery-thumb:hover { opacity: 0.8; }
+        .gallery-thumb.active { opacity: 1; border-color: var(--accent); }
+        .gallery-empty {
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+
+        /* Fullscreen lightbox */
+        .lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 300;
+            align-items: center;
+            justify-content: center;
+            cursor: zoom-out;
+        }
+        .lightbox.active { display: flex; }
+        .lightbox img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .lightbox-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            font-size: 22px;
+            cursor: pointer;
+        }
+        .lightbox-nav:hover { background: rgba(108, 92, 231, 0.6); }
+        .lightbox-prev { left: 20px; }
+        .lightbox-next { right: 20px; }
+        .lightbox-counter {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.7);
+            font-size: 13px;
+        }
+
+        /* Card photo click hint */
+        .card-photo { cursor: pointer; }
+        .card-photo-count {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        /* ─── Detail Modal ────────────────────── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--surface);
+            border-radius: 16px;
+            max-width: 640px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 28px;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: var(--surface2);
+            border: none;
+            color: var(--text-dim);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .modal h2 { font-size: 18px; margin-bottom: 4px; }
+        .modal .modal-address { color: var(--text-dim); font-size: 13px; margin-bottom: 16px; }
+        .modal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .modal .metric { background: var(--bg); }
+        .modal-remarks {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        .modal-links { display: flex; gap: 8px; }
+        .modal-links a {
+            flex: 1;
+            text-align: center;
+               padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            text-decoration: none;
+        }
+
+        /* ─── AI Analysis ────────────────────── */
+        .ai-btn {
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            flex: 1;
+            transition: all 0.2s;
+        }
+        .ai-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .ai-btn:disabled { opacity: 0.5; cursor: wait; }
+        .ai-analysis-section {
+            margin-top: 16px;
+            background: var(--bg);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+        }
+        .ai-analysis-section .ai-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent-light);
+        }
+        .ai-analysis-section .ai-body {
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text);
+        }
+        .ai-body h3 {
+            color: var(--accent-light);
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin: 16px 0 6px;
+        }
+        .ai-body h3:first-child { margin-top: 0; }
+        .ai-body p { margin-bottom: 8px; }
+        .ai-body ul, .ai-body ol { margin: 6px 0 10px 20px; }
+        .ai-body li { margin-bottom: 4px; }
+        .ai-body strong { color: var(--green); }
+        .ai-verdict-strong-buy { color: #00d68f; font-weight: 700; font-size: 16px; }
+        .ai-verdict-buy { color: #a29bfe; font-weight: 700; font-size: 16px; }
+        .ai-verdict-hold { color: #ffd93d; font-weight: 700; font-size: 16px; }
+        .ai-verdict-pass { color: #ff6b6b; font-weight: 700; font-size: 16px; }
+        .ai-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .ai-meta {
+            font-size: 10px;
+            color: var(--text-dim);
+            margin-top: 12px;
+            text-align: right;
+        }
+
+        /* ─── Loading / Empty ─────────────────── */
+        .loading {
+            text-align: center;
+            padding: 80px 32px;
+            color: var(--text-dim);
+        }
+        .loading .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 32px;
+            color: var(--text-dim);
+        }
+
+        /* ─── Responsive ──────────────────────── */
+        @media (max-width: 768px) {
+            .header { padding: 16px; flex-wrap: wrap; gap: 12px; }
+            .stats-bar, .filters, .grid { padding-left: 16px; padding-right: 16px; }
+            .grid { grid-template-columns: 1fr; }
+            .modal-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <h1><span>BRRRR</span> Deal Scanner</h1>
+    <div class="header-meta">
+        <span id="lastUpdated">Loading...</span>
+        <button class="refresh-btn" onclick="refreshData()" id="refreshBtn">Refresh</button>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-bar" id="statsBar">
+    <div class="stat-card">
+        <div class="label">Total Listings</div>
+        <div class="value" id="statTotal">-</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Viable Deals</div>
+        <div class="value green" id="statViable">-</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Best Score</div>
+        <div class="value accent" id="statBestScore">-</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Best Cashflow</div>
+        <div class="value green" id="statBestCF">-</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Avg Equity Out</div>
+        <div class="value yellow" id="statAvgEquity">-</div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filters" id="filtersBar">
+    <div class="filter-chip active" data-zip="all" onclick="filterZip('all', this)">All Markets</div>
+    <!-- zip chips injected dynamically -->
+    <select class="sort-select" id="sortSelect" onchange="sortProperties(this.value)">
+        <option value="score">Sort: BRRRR Score</option>
+        <option value="cashflow">Sort: Cashflow</option>
+        <option value="equity">Sort: Equity Out %</option>
+        <option value="price-low">Sort: Price (Low)</option>
+        <option value="price-high">Sort: Price (High)</option>
+        <option value="cap">Sort: Cap Rate</option>
+        <option value="dom">Sort: Days on Market</option>
+    </select>
+</div>
+
+<!-- Map -->
+<div class="map-container" id="mapContainer">
+    <div id="map"></div>
+</div>
+
+<!-- Property Grid -->
+<div id="content">
+    <div class="loading">
+        <div class="spinner"></div>
+        <p>Scanning MLS Grid for BRRRR deals...</p>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal" id="modal"></div>
+</div>
+
+<!-- Fullscreen Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+    <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+    <button class="lightbox-nav lightbox-prev" onclick="lightboxNav(-1, event)">&lsaquo;</button>
+    <img id="lightboxImg" src="" alt="Property photo">
+    <button class="lightbox-nav lightbox-next" onclick="lightboxNav(1, event)">&rsaquo;</button>
+    <div class="lightbox-counter" id="lightboxCounter"></div>
+</div>
+
+<script>
+    let allProperties = [];
+    let activeZip = 'all';
+    let map = null;
+    let markerLayer = null;
+
+    // Proxy all MLS Grid photos through Flask to avoid browser CORS/referrer issues
+    function proxyUrl(url) {
+        if (!url) return '';
+        return '/api/photo?url=' + encodeURIComponent(url);
+    }
+
+    const ZIP_NAMES = {
+        "63130": "University City", "63143": "Maplewood", "63139": "Lindenwood Park",
+        "63104": "Soulard", "63110": "Tower Grove", "63116": "Dutchtown",
+        "93117": "Goleta/SB"
+    };
+
+    // Approximate zip code centers for fallback when lat/lng not in listing
+    const ZIP_COORDS = {
+        "63130": [38.6631, -90.3228],
+        "63143": [38.6120, -90.3265],
+        "63139": [38.6082, -90.2969],
+        "63104": [38.6050, -90.2104],
+        "63110": [38.6170, -90.2500],
+        "63116": [38.5830, -90.2560],
+        "93117": [34.4400, -119.8280],
+    };
+
+    // ─── Map Setup ─────────────────────────────
+    function initMap() {
+        map = L.map('map', {
+            zoomControl: true,
+            scrollWheelZoom: true,
+        }).setView([38.63, -90.27], 12); // default: St. Louis
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap',
+            maxZoom: 19,
+        }).addTo(map);
+
+        markerLayer = L.layerGroup().addTo(map);
+    }
+
+    function getMarkerColor(score) {
+        if (score >= 70) return '#00d68f';      // green - hot deal
+        if (score >= 50) return '#a29bfe';       // purple - good
+        if (score >= 30) return '#ffd93d';       // yellow - decent
+        return '#ff6b6b';                         // red - weak
+    }
+
+    function createCircleMarker(lat, lng, property) {
+        const color = getMarkerColor(property.score);
+        const marker = L.circleMarker([lat, lng], {
+            radius: Math.max(8, Math.min(16, property.score / 6)),
+            fillColor: color,
+            color: '#1a1d27',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.85,
+        });
+
+        const cfColor = property.cashflow >= 300 ? '#00d68f' : property.cashflow > 0 ? '#ffd93d' : '#ff6b6b';
+
+        marker.bindPopup(`
+            <div class="popup-price">$${property.price.toLocaleString()}</div>
+            <div class="popup-address">${property.address}, ${property.city} ${property.zip}</div>
+            <div class="popup-metrics">
+                <div class="popup-metric">
+                    <div class="pm-label">Score</div>
+                    <div class="pm-value" style="color:${color}">${property.score}/100</div>
+                </div>
+                <div class="popup-metric">
+                    <div class="pm-label">Cashflow</div>
+                    <div class="pm-value" style="color:${cfColor}">$${property.cashflow.toLocaleString()}/mo</div>
+                </div>
+                <div class="popup-metric">
+                    <div class="pm-label">Equity Out</div>
+                    <div class="pm-value">${property.equityPct}%</div>
+                </div>
+                <div class="popup-metric">
+                    <div class="pm-label">Est ARV</div>
+                    <div class="pm-value">$${property.arv.toLocaleString()}</div>
+                </div>
+            </div>
+            <div class="popup-links">
+                <a href="${property.zillowUrl}" target="_blank" style="background:#006aff20;color:#4d9fff;border:1px solid #006aff40;">Zillow</a>
+            </div>
+        `, { maxWidth: 280 });
+
+        return marker;
+    }
+
+    function updateMap(properties) {
+        if (!map || !markerLayer) return;
+        markerLayer.clearLayers();
+
+        const bounds = [];
+
+        properties.forEach((p, i) => {
+            // Use lat/lng from listing if available, else jitter around zip center
+            let lat = p.lat;
+            let lng = p.lng;
+
+            if (!lat || !lng) {
+                const center = ZIP_COORDS[p.zip];
+                if (!center) return;
+                // Small random offset so markers don't stack perfectly
+                lat = center[0] + (Math.random() - 0.5) * 0.015;
+                lng = center[1] + (Math.random() - 0.5) * 0.015;
+            }
+
+            const marker = createCircleMarker(lat, lng, p);
+            markerLayer.addLayer(marker);
+            bounds.push([lat, lng]);
+        });
+
+        if (bounds.length > 0) {
+            // Check if all points are in roughly the same area or spread across markets
+            const lats = bounds.map(b => b[0]);
+            const latSpread = Math.max(...lats) - Math.min(...lats);
+
+            if (latSpread > 2) {
+                // Properties span multiple regions (e.g. STL + CA), fit all
+                map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
+            } else {
+                map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+            }
+        }
+    }
+
+    async function loadData(refresh = false) {
+        try {
+            const url = refresh ? '/api/properties?refresh=true' : '/api/properties';
+            const resp = await fetch(url);
+            const data = await resp.json();
+
+            // Show API errors if any
+            if (data.errors && data.errors.length > 0) {
+                const errorHtml = data.errors.map(e =>
+                    `<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:10px;padding:16px 20px;margin:8px 32px;font-size:13px;color:var(--red);">
+                        <strong>API Error:</strong> ${e}
+                    </div>`
+                ).join('');
+                document.getElementById('content').innerHTML = errorHtml +
+                    `<div class="empty-state"><p>MLS Grid API returned errors. Check your terminal for details.<br>
+                    Verify your token is valid and your MLS Grid account has access to these markets.</p></div>`;
+
+                const updated = new Date(data.lastUpdated);
+                document.getElementById('lastUpdated').textContent =
+                    `Error at ${updated.toLocaleString()}`;
+                return;
+            }
+
+            allProperties = data.properties || [];
+            updateStats(data);
+            buildZipChips(allProperties);
+            updateMap(allProperties);
+            renderGrid(allProperties);
+
+            const updated = new Date(data.lastUpdated);
+            document.getElementById('lastUpdated').textContent =
+                `Updated ${updated.toLocaleString()} (${data.totalRaw} raw / ${data.totalFiltered} filtered / ${data.totalViable} viable)`;
+        } catch (e) {
+            document.getElementById('content').innerHTML =
+                `<div class="empty-state"><p>Could not connect to dashboard backend.<br>
+                Make sure the Flask server is running.<br><br>
+                <code style="color:var(--red);">${e}</code></p></div>`;
+        }
+    }
+
+    function updateStats(data) {
+        document.getElementById('statTotal').textContent = data.totalFiltered || 0;
+        document.getElementById('statViable').textContent = data.totalViable || 0;
+
+        const props = data.properties || [];
+        if (props.length > 0) {
+            document.getElementById('statBestScore').textContent = props[0].score;
+            const bestCF = Math.max(...props.map(p => p.cashflow));
+            document.getElementById('statBestCF').textContent = '$' + bestCF.toLocaleString() + '/mo';
+            const avgEq = Math.round(props.reduce((s, p) => s + p.equityPct, 0) / props.length);
+            document.getElementById('statAvgEquity').textContent = avgEq + '%';
+        }
+    }
+
+    function buildZipChips(properties) {
+        const bar = document.getElementById('filtersBar');
+        // remove old zip chips (keep "All" and sort)
+        bar.querySelectorAll('.filter-chip[data-zip]:not([data-zip="all"])').forEach(el => el.remove());
+        const sort = document.getElementById('sortSelect');
+
+        const zips = [...new Set(properties.map(p => p.zip))].sort();
+        zips.forEach(z => {
+            const count = properties.filter(p => p.zip === z).length;
+            const chip = document.createElement('div');
+            chip.className = 'filter-chip';
+            chip.dataset.zip = z;
+            chip.textContent = `${ZIP_NAMES[z] || z} (${count})`;
+            chip.onclick = function() { filterZip(z, this); };
+            bar.insertBefore(chip, sort);
+        });
+    }
+
+    function filterZip(zip, el) {
+        activeZip = zip;
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        const filtered = zip === 'all' ? allProperties : allProperties.filter(p => p.zip === zip);
+        updateMap(filtered);
+        renderGrid(filtered);
+    }
+
+    function sortProperties(key) {
+        const sortFn = {
+            'score': (a, b) => b.score - a.score,
+            'cashflow': (a, b) => b.cashflow - a.cashflow,
+            'equity': (a, b) => b.equityPct - a.equityPct,
+            'price-low': (a, b) => a.price - b.price,
+            'price-high': (a, b) => b.price - a.price,
+            'cap': (a, b) => b.capRate - a.capRate,
+            'dom': (a, b) => b.dom - a.dom,
+        }[key] || ((a, b) => b.score - a.score);
+
+        allProperties.sort(sortFn);
+        const filtered = activeZip === 'all' ? allProperties : allProperties.filter(p => p.zip === activeZip);
+        updateMap(filtered);
+        renderGrid(filtered);
+    }
+
+    function renderGrid(properties) {
+        const content = document.getElementById('content');
+        if (properties.length === 0) {
+            content.innerHTML = '<div class="empty-state"><p>No properties match current filters.</p></div>';
+            return;
+        }
+
+        let html = '<div class="grid">';
+        properties.forEach((p, i) => {
+            const cfClass = p.cashflow >= 300 ? 'positive' : p.cashflow > 0 ? 'neutral' : 'negative';
+            const eqClass = p.equityPct >= 90 ? 'positive' : p.equityPct >= 70 ? 'neutral' : 'negative';
+            const isHot = p.score >= 70;
+
+            const photoClass = p.photoUrl ? 'card-photo' : 'card-photo no-photo';
+            const photoCount = (p.photos && p.photos.length) || 0;
+
+            html += `
+            <div class="card">
+                <div class="${photoClass}" onclick="${p.photoUrl ? `openLightbox(${i})` : ''}">
+                    ${p.photoUrl ? `<img src="${proxyUrl(p.photoUrl)}" alt="${p.address}" loading="lazy">` : '<span>No Photo</span>'}
+                    <span class="card-badge badge-score">${p.score}/100</span>
+                    ${isHot ? '<span class="card-badge badge-hot">HOT</span>' : ''}
+                    ${photoCount > 1 ? `<span class="card-photo-count">${photoCount} photos</span>` : ''}
+                </div>
+                <div class="card-body">
+                    <div class="card-price">$${p.price.toLocaleString()}</div>
+                    <div class="card-address">${p.address}, ${p.city} ${p.zip}</div>
+                    <div class="card-neighborhood">${p.neighborhood}</div>
+                    <div class="card-specs" style="margin-top:10px;">
+                        <span><strong>${p.beds}</strong> bd</span>
+                        <span><strong>${p.baths}</strong> ba</span>
+                        <span><strong>${p.sqft ? p.sqft.toLocaleString() : '?'}</strong> sqft</span>
+                        <span>Built <strong>${p.yearBuilt || '?'}</strong></span>
+                        <span><strong>${p.dom}</strong> DOM</span>
+                    </div>
+                    <div class="card-metrics">
+                        <div class="metric">
+                            <div class="m-label">Cashflow</div>
+                            <div class="m-value ${cfClass}">$${p.cashflow.toLocaleString()}/mo</div>
+                        </div>
+                        <div class="metric">
+                            <div class="m-label">Equity Out</div>
+                            <div class="m-value ${eqClass}">${p.equityPct}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="m-label">Est ARV</div>
+                            <div class="m-value">$${p.arv.toLocaleString()}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="m-label">Cap Rate</div>
+                            <div class="m-value">${p.capRate}%</div>
+                        </div>
+                    </div>
+                    <div class="card-tags">
+                        <span class="tag ${p.meets70 ? 'tag-pass' : 'tag-fail'}">${p.meets70 ? '70% Rule Pass' : '70% Rule Fail'}</span>
+                        ${p.cashflow >= 300 ? '<span class="tag tag-pass">CF Target Met</span>' : ''}
+                        ${p.equityPct >= 100 ? '<span class="tag tag-pass">Full Equity Out</span>' : ''}
+                        ${p.dom >= 60 ? '<span class="tag tag-warn">High DOM</span>' : ''}
+                    </div>
+                    <div class="card-links">
+                        <a href="${p.zillowUrl}" target="_blank" class="link-zillow">View on Zillow</a>
+                        <a href="#" class="link-details" onclick="showDetail(${i}); return false;">Full Analysis</a>
+                    </div>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+        content.innerHTML = html;
+    }
+
+    // Track current gallery state for the modal
+    let modalGalleryPhotos = [];
+    let modalGalleryIndex = 0;
+    const aiAnalysisCache = {};
+
+    function showDetail(index) {
+        const filtered = activeZip === 'all' ? allProperties : allProperties.filter(p => p.zip === activeZip);
+        const p = filtered[index];
+        if (!p) return;
+
+        modalGalleryPhotos = p.photos || [];
+        modalGalleryIndex = 0;
+
+        // Kick off background download of all gallery photos for this property
+        if (modalGalleryPhotos.length > 1) {
+            fetch('/api/prefetch-gallery', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({urls: modalGalleryPhotos})
+            }).catch(() => {});
+        }
+
+        const cfClass = p.cashflow >= 300 ? 'positive' : p.cashflow > 0 ? 'neutral' : 'negative';
+
+        // Build gallery HTML
+        let galleryHtml = '';
+        if (modalGalleryPhotos.length > 0) {
+            const thumbsHtml = modalGalleryPhotos.map((url, i) =>
+                `<img class="gallery-thumb ${i === 0 ? 'active' : ''}" src="${proxyUrl(url)}" onclick="modalGalleryGo(${i})">`
+            ).join('');
+
+            galleryHtml = `
+                <div class="gallery" id="modalGallery">
+                    ${modalGalleryPhotos.length > 1 ? '<button class="gallery-nav gallery-prev" onclick="modalGalleryNav(-1)">&lsaquo;</button>' : ''}
+                    <img class="gallery-main" id="modalGalleryImg" src="${proxyUrl(modalGalleryPhotos[0])}"
+                         onclick="openLightboxFromModal()">
+                    ${modalGalleryPhotos.length > 1 ? '<button class="gallery-nav gallery-next" onclick="modalGalleryNav(1)">&rsaquo;</button>' : ''}
+                    <div class="gallery-counter" id="modalGalleryCounter">1 / ${modalGalleryPhotos.length}</div>
+                </div>
+                ${modalGalleryPhotos.length > 1 ? `<div class="gallery-thumbs" id="modalThumbs">${thumbsHtml}</div>` : ''}
+            `;
+        } else {
+            galleryHtml = '<div class="gallery"><div class="gallery-empty">No photos available</div></div>';
+        }
+
+        document.getElementById('modal').innerHTML = `
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2>$${p.price.toLocaleString()} &mdash; ${p.address}</h2>
+            <div class="modal-address">${p.fullAddress} &bull; MLS# ${p.id} &bull; ${p.status}</div>
+
+            ${galleryHtml}
+
+            <div class="modal-grid">
+                <div class="metric"><div class="m-label">BRRRR Score</div><div class="m-value" style="color:var(--accent-light)">${p.score}/100</div></div>
+                <div class="metric"><div class="m-label">Cashflow</div><div class="m-value ${cfClass}">$${p.cashflow.toLocaleString()}/mo</div></div>
+                <div class="metric"><div class="m-label">Annual CF</div><div class="m-value ${cfClass}">$${p.annualCashflow.toLocaleString()}</div></div>
+
+                <div class="metric"><div class="m-label">Est ARV</div><div class="m-value">$${p.arv.toLocaleString()}</div></div>
+                <div class="metric"><div class="m-label">Est Rehab</div><div class="m-value">$${p.rehab.toLocaleString()}</div></div>
+                <div class="metric"><div class="m-label">All-In Cost</div><div class="m-value">$${p.allIn.toLocaleString()}</div></div>
+
+                <div class="metric"><div class="m-label">Refi Loan</div><div class="m-value">$${p.refiLoan.toLocaleString()}</div></div>
+                <div class="metric"><div class="m-label">Cash Left</div><div class="m-value">$${p.cashLeft.toLocaleString()}</div></div>
+                <div class="metric"><div class="m-label">Equity Out</div><div class="m-value">${p.equityPct}%</div></div>
+
+                <div class="metric"><div class="m-label">Monthly Rent</div><div class="m-value">$${p.monthlyRent.toLocaleString()}</div></div>
+                <div class="metric"><div class="m-label">Monthly Expenses</div><div class="m-value">$${p.monthlyExpenses.toLocaleString()}</div></div>
+                <div class="metric"><div class="m-label">Monthly Mortgage</div><div class="m-value">$${p.monthlyMortgage.toLocaleString()}</div></div>
+
+                <div class="metric"><div class="m-label">Cap Rate</div><div class="m-value">${p.capRate}%</div></div>
+                <div class="metric"><div class="m-label">Cash on Cash</div><div class="m-value">${p.coc < 900 ? p.coc + '%' : 'N/A'}</div></div>
+                <div class="metric"><div class="m-label">70% Rule</div><div class="m-value" style="color:${p.meets70 ? 'var(--green)' : 'var(--red)'}">${p.meets70 ? 'PASS' : 'FAIL'}</div></div>
+            </div>
+
+            ${p.remarks ? `<div class="modal-remarks">${p.remarks}</div>` : ''}
+
+            <div class="modal-links">
+                <a href="${p.zillowUrl}" target="_blank" class="link-zillow" style="flex:1;">View on Zillow</a>
+                <button class="ai-btn" id="aiAnalysisBtn" onclick="runAiAnalysis('${p.id}')">
+                    Gemini AI Analysis
+                </button>
+            </div>
+
+            <div id="aiAnalysisContainer"></div>
+        `;
+        document.getElementById('modalOverlay').classList.add('active');
+
+        // If we already have a cached AI analysis for this property, show it
+        if (aiAnalysisCache[p.id]) {
+            displayAiAnalysis(aiAnalysisCache[p.id]);
+        }
+    }
+
+    // ─── AI Analysis ─────────────────────────
+
+    async function runAiAnalysis(listingId) {
+        const btn = document.getElementById('aiAnalysisBtn');
+        const container = document.getElementById('aiAnalysisContainer');
+        if (!btn || !container) return;
+
+        // Check client-side cache
+        if (aiAnalysisCache[listingId]) {
+            displayAiAnalysis(aiAnalysisCache[listingId]);
+            return;
+        }
+
+        // Show loading state
+        btn.disabled = true;
+        btn.innerHTML = '<span class="ai-spinner"></span>Analyzing with Gemini...';
+        container.innerHTML = `
+            <div class="ai-analysis-section" style="text-align:center;padding:30px;">
+                <div class="ai-spinner" style="width:24px;height:24px;border-width:3px;margin:0 auto 12px;"></div>
+                <p style="color:var(--text-dim);font-size:13px;">Gemini is analyzing photos and listing data...</p>
+            </div>`;
+
+        try {
+            const resp = await fetch('/api/ai-analysis', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({listingId})
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                container.innerHTML = `
+                    <div class="ai-analysis-section" style="border-color:var(--red);">
+                        <p style="color:var(--red);">AI Analysis Error: ${data.error}</p>
+                    </div>`;
+                btn.disabled = false;
+                btn.textContent = 'Retry AI Analysis';
+                return;
+            }
+
+            // Cache it
+            aiAnalysisCache[listingId] = data;
+            displayAiAnalysis(data);
+            btn.disabled = false;
+            btn.textContent = 'AI Analysis Complete';
+
+        } catch (e) {
+            container.innerHTML = `
+                <div class="ai-analysis-section" style="border-color:var(--red);">
+                    <p style="color:var(--red);">Failed to connect to AI service: ${e.message}</p>
+                </div>`;
+            btn.disabled = false;
+            btn.textContent = 'Retry AI Analysis';
+        }
+    }
+
+    function displayAiAnalysis(data) {
+        const container = document.getElementById('aiAnalysisContainer');
+        if (!container) return;
+
+        // Convert markdown-style text to basic HTML
+        let html = data.analysis
+            .replace(/### (.*)/g, '<h3>$1</h3>')
+            .replace(/## (.*)/g, '<h3>$1</h3>')
+            .replace(/\*\*STRONG BUY\*\*/g, '<span class="ai-verdict-strong-buy">STRONG BUY</span>')
+            .replace(/\*\*BUY\*\*/g, '<span class="ai-verdict-buy">BUY</span>')
+            .replace(/\*\*HOLD\*\*/g, '<span class="ai-verdict-hold">HOLD</span>')
+            .replace(/\*\*PASS\*\*/g, '<span class="ai-verdict-pass">PASS</span>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^\- (.*)/gm, '<li>$1</li>')
+            .replace(/^\d+\. (.*)/gm, '<li>$1</li>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+
+        container.innerHTML = `
+            <div class="ai-analysis-section">
+                <div class="ai-header">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                    </svg>
+                    Gemini AI Investment Analysis
+                </div>
+                <div class="ai-body"><p>${html}</p></div>
+                <div class="ai-meta">${data.photosAnalyzed} photos analyzed &bull; ${new Date(data.timestamp).toLocaleString()}</div>
+            </div>`;
+    }
+
+    function modalGalleryNav(dir) {
+        modalGalleryIndex = (modalGalleryIndex + dir + modalGalleryPhotos.length) % modalGalleryPhotos.length;
+        modalGalleryGo(modalGalleryIndex);
+    }
+
+    function modalGalleryGo(idx) {
+        modalGalleryIndex = idx;
+        const img = document.getElementById('modalGalleryImg');
+        const counter = document.getElementById('modalGalleryCounter');
+        if (img) img.src = proxyUrl(modalGalleryPhotos[idx]);
+        if (counter) counter.textContent = `${idx + 1} / ${modalGalleryPhotos.length}`;
+        // Update thumb active state
+        document.querySelectorAll('#modalThumbs .gallery-thumb').forEach((t, i) => {
+            t.classList.toggle('active', i === idx);
+        });
+    }
+
+    // ─── Lightbox (fullscreen photo viewer) ─────
+    let lightboxPhotos = [];
+    let lightboxIndex = 0;
+
+    function openLightbox(cardIndex) {
+        const filtered = activeZip === 'all' ? allProperties : allProperties.filter(p => p.zip === activeZip);
+        const p = filtered[cardIndex];
+        if (!p || !p.photos || p.photos.length === 0) return;
+
+        lightboxPhotos = p.photos;
+        lightboxIndex = 0;
+        showLightboxPhoto();
+        document.getElementById('lightbox').classList.add('active');
+    }
+
+    function openLightboxFromModal() {
+        if (modalGalleryPhotos.length === 0) return;
+        lightboxPhotos = modalGalleryPhotos;
+        lightboxIndex = modalGalleryIndex;
+        showLightboxPhoto();
+        document.getElementById('lightbox').classList.add('active');
+    }
+
+    function showLightboxPhoto() {
+        document.getElementById('lightboxImg').src = proxyUrl(lightboxPhotos[lightboxIndex]);
+        document.getElementById('lightboxCounter').textContent =
+            `${lightboxIndex + 1} / ${lightboxPhotos.length}`;
+    }
+
+    function lightboxNav(dir, e) {
+        if (e) { e.stopPropagation(); }
+        lightboxIndex = (lightboxIndex + dir + lightboxPhotos.length) % lightboxPhotos.length;
+        showLightboxPhoto();
+    }
+
+    function closeLightbox(e) {
+        if (e && e.target !== document.getElementById('lightbox')) return;
+        document.getElementById('lightbox').classList.remove('active');
+    }
+
+    function closeModal(e) {
+        if (!e || e.target === document.getElementById('modalOverlay')) {
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+    }
+
+    async function refreshData() {
+        const btn = document.getElementById('refreshBtn');
+        btn.disabled = true;
+        btn.textContent = 'Scanning...';
+        await loadData(true);
+        btn.disabled = false;
+        btn.textContent = 'Refresh';
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            if (document.getElementById('lightbox').classList.contains('active')) {
+                document.getElementById('lightbox').classList.remove('active');
+            } else {
+                closeModal();
+            }
+        }
+        if (document.getElementById('lightbox').classList.contains('active')) {
+            if (e.key === 'ArrowLeft') lightboxNav(-1);
+            if (e.key === 'ArrowRight') lightboxNav(1);
+        }
+    });
+
+    // Initialize map and load data
+    initMap();
+    loadData();
+</script>
+</body>
+</html>
