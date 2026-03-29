@@ -374,6 +374,38 @@ def test_photo():
 </body></html>"""
 
 
+@app.route("/api/scan")
+def api_scan():
+    """Trigger a daily scan + email digest. Called by external cron service."""
+    secret = request.args.get("key", "")
+    if secret != os.environ.get("SCAN_SECRET", "brrrr2026"):
+        return jsonify({"error": "unauthorized"}), 403
+
+    try:
+        from emailer import send_email
+        print("[SCAN] Triggered via /api/scan endpoint")
+        scan_result = run_scan(track_changes=True)
+        stats = scan_result["stats"]
+
+        has_changes = stats["newListings"] > 0 or stats["priceDrops"] > 0
+        has_deals = stats["totalViable"] > 0
+        email_sent = False
+
+        if has_deals or has_changes:
+            email_sent = send_email(scan_result, dry_run=False)
+
+        return jsonify({
+            "status": "ok",
+            "timestamp": datetime.now().isoformat(),
+            "stats": stats,
+            "emailSent": email_sent,
+            "reason": "deals/changes found" if (has_deals or has_changes) else "no deals or changes"
+        })
+    except Exception as e:
+        print(f"[SCAN] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/health")
 def health():
     return jsonify({"status": "ok", "time": datetime.now().isoformat()})
