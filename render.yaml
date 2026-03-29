@@ -1,0 +1,40 @@
+# Render.com deployment config
+# Deploy at: https://dashboard.render.com/new/web-service
+
+services:
+  # ─── Web Dashboard ─────────────────────────────────────────
+  - type: web
+    name: brrrr-dashboard
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    plan: free
+    envVars:
+      - key: MLSGRID_TOKEN
+        sync: false  # set manually in Render dashboard
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SMTP_USER
+        value: "hoffman.pm@gmail.com"
+      - key: SMTP_PASSWORD
+        sync: false  # Gmail App Password — set manually
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+  # ─── Daily Scanner Cron Job ────────────────────────────────
+  - type: cron
+    name: brrrr-daily-scan
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    schedule: "0 12 * * *"  # 12:00 UTC = 7:00 AM CT / 6:00 AM CT (DST)
+    startCommand: python daily_scan.py
+    plan: free
+    envVars:
+      - key: MLSGRID_TOKEN
+        sync: false
+      - key: SMTP_USER
+        value: "hoffman.pm@gmail.com"
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.0"
